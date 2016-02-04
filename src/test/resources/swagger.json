@@ -1,0 +1,15 @@
+
+{
+  "swagger" : "2.0",
+  "info" : {
+    "version" : "1.0.0",
+    "title" : "Swagger Test"
+  },
+  "paths" : {
+    "/hello" : {
+      "get" : {
+        "operationId" : "test.dummy"
+      }
+    }
+  }
+}
