@@ -3,6 +3,9 @@ package com.chamfroy.vertx.swagger;
 import io.swagger.models.HttpMethod;
 import io.swagger.models.Operation;
 import io.swagger.models.Swagger;
+import io.swagger.models.parameters.Parameter;
+import io.swagger.models.parameters.PathParameter;
+import io.swagger.models.parameters.QueryParameter;
 import io.vertx.core.MultiMap;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpServerRequest;
@@ -25,28 +28,30 @@ public class SwaggerRouter {
     private static Logger VERTX_LOGGER = LoggerFactory.getLogger(SwaggerRouter.class);
 
     private static Pattern PATH_PARAMETERS = Pattern.compile("\\{(.*)\\}");
+    private static Map<HttpMethod, RouteBuilder> ROUTE_BUILDERS = new EnumMap<HttpMethod, RouteBuilder>(HttpMethod.class) {
+        {
+            put(HttpMethod.POST, Router::post);
+            put(HttpMethod.GET, Router::get);
+            put(HttpMethod.PUT, Router::put);
+            put(HttpMethod.PATCH, Router::patch);
+            put(HttpMethod.DELETE, Router::delete);
+            put(HttpMethod.HEAD, Router::head);
+            put(HttpMethod.OPTIONS, Router::options);
+        }
+    };
 
-    private static Map<HttpMethod, RouteBuilder> ROUTE_BUILDERS = new EnumMap<HttpMethod, RouteBuilder>(HttpMethod.class) {{
-        put(HttpMethod.POST, Router::post);
-        put(HttpMethod.GET, Router::get);
-        put(HttpMethod.PUT, Router::put);
-        put(HttpMethod.PATCH, Router::patch);
-        put(HttpMethod.DELETE, Router::delete);
-        put(HttpMethod.HEAD, Router::head);
-        put(HttpMethod.OPTIONS, Router::options);
-    }};
-
-    private static Map<String, ParameterExtractor> PARAMETER_EXTRACTORS = new HashMap<String, ParameterExtractor>() {{
-        put("path", new PathParameterExtractor());
-    }};
+    private static Map<String, ParameterExtractor> PARAMETER_EXTRACTORS = new HashMap<String, ParameterExtractor>() {
+        {
+            put("path", new PathParameterExtractor());
+            put("query", new QueryParameterExtractor());
+        }
+    };
 
     public static Router swaggerRouter(Router baseRouter, Swagger swagger, EventBus eventBus) {
-        swagger.getPaths().forEach((path, pathDescription) ->
-            pathDescription.getOperationMap().forEach((method, operation) -> {
-                Route route = ROUTE_BUILDERS.get(method).buildRoute(baseRouter, convertParametersToVertx(path));
-                configureRoute(route, operation, eventBus);
-            })
-        );
+        swagger.getPaths().forEach((path, pathDescription) -> pathDescription.getOperationMap().forEach((method, operation) -> {
+            Route route = ROUTE_BUILDERS.get(method).buildRoute(baseRouter, convertParametersToVertx(path));
+            configureRoute(route, operation, eventBus);
+        }));
         return baseRouter;
     }
 
@@ -57,9 +62,9 @@ public class SwaggerRouter {
         route.handler(context -> {
             try {
                 JsonObject message = new JsonObject();
-                operation.getParameters().forEach( parameter -> {
+                operation.getParameters().forEach(parameter -> {
                     String name = parameter.getName();
-                    String value = PARAMETER_EXTRACTORS.get(parameter.getIn()).extract(name, parameter.getRequired(), context.request());
+                    Object value = PARAMETER_EXTRACTORS.get(parameter.getIn()).extract(name, parameter, context.request());
                     message.put(name, value);
                 });
                 eventBus.<JsonObject>send(operation.getOperationId(), message, operationResponse -> {
@@ -70,6 +75,7 @@ public class SwaggerRouter {
                     }
                 });
             } catch (RuntimeException e) {
+                VERTX_LOGGER.error(e.getLocalizedMessage(), e);
                 badRequestEnd(context.response());
             }
         });
@@ -93,16 +99,31 @@ public class SwaggerRouter {
     }
 
     private interface ParameterExtractor {
-        String extract(String name, boolean required, HttpServerRequest request);
+        Object extract(String name, Parameter parameter, HttpServerRequest request);
     }
 
     public static class PathParameterExtractor implements ParameterExtractor {
         @Override
-        public String extract(String name, boolean required, HttpServerRequest request) {
+        public Object extract(String name, Parameter parameter, HttpServerRequest request) {
+            PathParameter pathParam = (PathParameter) parameter;
             MultiMap params = request.params();
-            if (!params.contains(name) && required) {
+            if (!params.contains(name) && pathParam.getRequired()) {
                 throw new IllegalArgumentException("Missing required parameter: " + name);
             }
+            return params.get(name);
+        }
+    }
+
+    public static class QueryParameterExtractor implements ParameterExtractor {
+        @Override
+        public Object extract(String name, Parameter parameter, HttpServerRequest request) {
+            QueryParameter queryParam = (QueryParameter) parameter;
+            MultiMap params = request.params();
+            if (!params.contains(name) && queryParam.getRequired()) {
+                throw new IllegalArgumentException("Missing required parameter: " + name);
+            }
+            if (queryParam.getType().equals("array"))
+                return params.getAll(name);
             return params.get(name);
         }
     }
