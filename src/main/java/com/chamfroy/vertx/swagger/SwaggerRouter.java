@@ -50,12 +50,13 @@ public class SwaggerRouter {
     public static Router swaggerRouter(Router baseRouter, Swagger swagger, EventBus eventBus) {
         swagger.getPaths().forEach((path, pathDescription) -> pathDescription.getOperationMap().forEach((method, operation) -> {
             Route route = ROUTE_BUILDERS.get(method).buildRoute(baseRouter, convertParametersToVertx(path));
-            configureRoute(route, operation, eventBus);
+            String serviceId = computeServiceId(method, path);
+            configureRoute(route, serviceId, operation, eventBus);
         }));
         return baseRouter;
     }
 
-    private static void configureRoute(Route route, Operation operation, EventBus eventBus) {
+    private static void configureRoute(Route route, String serviceId, Operation operation, EventBus eventBus) {
         Optional.ofNullable(operation.getConsumes()).ifPresent(consumes -> consumes.forEach(route::consumes));
         Optional.ofNullable(operation.getProduces()).ifPresent(produces -> produces.forEach(route::produces));
 
@@ -67,7 +68,7 @@ public class SwaggerRouter {
                     Object value = PARAMETER_EXTRACTORS.get(parameter.getIn()).extract(name, parameter, context.request());
                     message.put(name, value);
                 });
-                eventBus.<JsonObject>send(operation.getOperationId(), message, operationResponse -> {
+                eventBus.<JsonObject> send(serviceId, message, operationResponse -> {
                     if (operationResponse.succeeded()) {
                         context.response().end(operationResponse.result().body().encode());
                     } else {
@@ -84,6 +85,10 @@ public class SwaggerRouter {
     private static String convertParametersToVertx(String path) {
         Matcher pathMatcher = PATH_PARAMETERS.matcher(path);
         return pathMatcher.replaceAll(":$1");
+    }
+
+    private static String computeServiceId(HttpMethod httpMethod, String pathname) {
+        return httpMethod.name() + pathname.replaceAll("_", "-").replaceAll("/", "_").replaceAll("[{}]", "");
     }
 
     private static void internalServerErrorEnd(HttpServerResponse response) {
