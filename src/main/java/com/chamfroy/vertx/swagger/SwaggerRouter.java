@@ -1,4 +1,4 @@
-package io.vertx.ext.web.swagger;
+package com.chamfroy.vertx.swagger;
 
 import io.swagger.models.HttpMethod;
 import io.swagger.models.Operation;
