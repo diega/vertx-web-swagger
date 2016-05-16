@@ -128,15 +128,14 @@ public class BuildRouterTest {
         });
     }
 
-    @Test(timeout = 2000)
+    @Test(timeout = 2000, expected=TimeoutException.class)
     public void testMessageIsNotConsume(TestContext context) {
         Async async = context.async();
-        HttpClientRequest req = httpClient.get(TEST_PORT, TEST_HOST, "/store/inventory");
-        req.setTimeout(1000);
-        req.exceptionHandler(err -> {
-            context.assertEquals(err.getClass(), TimeoutException.class);
-            async.complete();
-        });
+        httpClient.getNow(TEST_PORT, TEST_HOST, "/user/logout", response -> 
+            response.exceptionHandler(err -> {
+                async.complete();
+            })
+        );
     }
 
     @Test(timeout = 2000)
