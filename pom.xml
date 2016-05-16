@@ -34,9 +34,9 @@
 	</developers>
 
 	<scm>
-		<url>https://github.com/phiz71/vertx-web-swagger</url>
-		<connection>scm:git:git://github.com/phiz71/vertx-web-swagger.git</connection>
-		<developerConnection>scm:git:git@github.com/phiz71/vertx-web-swagger.git</developerConnection>
+		<url>git@github.com:phiz71/vertx-web-swagger</url>
+		<connection>scm:git:git@github.com:phiz71/vertx-web-swagger.git</connection>
+		<developerConnection>scm:git:git@github.com:phiz71/vertx-web-swagger.git</developerConnection>
 
 	</scm>
 
