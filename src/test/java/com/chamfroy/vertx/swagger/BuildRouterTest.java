@@ -26,7 +26,7 @@ import io.vertx.ext.web.Router;
 public class BuildRouterTest {
 
     private static final int TEST_PORT = 9292;
-    private static final String TEST_HOST = "localhost";
+    private static final String TEST_HOST = "localhost";    
     private static Vertx vertx;
     private static EventBus eventBus;
     private static HttpClient httpClient;
@@ -36,6 +36,8 @@ public class BuildRouterTest {
         Async before = context.async();
         vertx = Vertx.vertx();
         eventBus = vertx.eventBus();
+        
+        //init Router
         FileSystem vertxFileSystem = vertx.fileSystem();
         vertxFileSystem.readFile("swagger.json", readFile -> {
             if (readFile.succeeded()) {
@@ -53,158 +55,122 @@ public class BuildRouterTest {
             }
         });
 
+        //init consumers
+        eventBus.<JsonObject> consumer("GET_store_inventory").handler(message -> {
+            message.reply(new JsonObject().put("sold", 2L));
+        });
+        eventBus.<JsonObject> consumer("test.dummy").handler(message -> {
+            context.fail("should not be called");
+        });
+        eventBus.<JsonObject> consumer("GET_pet_petId").handler(message -> {
+            String petId = message.body().getString("petId");
+            message.reply(new JsonObject().put("petId_received",petId));
+        });
+        eventBus.<JsonObject> consumer("GET_user_login").handler(message -> {
+            String username = message.body().getString("username");
+            message.reply(new JsonObject().put("username_received",username));
+        });
+        eventBus.<JsonObject> consumer("GET_pet_findByStatus").handler(message -> {
+            JsonArray status = message.body().getJsonArray("status");
+            JsonObject result = new JsonObject();
+            for(int i=0; i<status.size(); i++) {
+                result.put("element "+i, status.getString(i));
+            }
+            message.reply(result);
+        });
+        
+        //init http Server
         HttpClientOptions options = new HttpClientOptions();
         options.setDefaultPort(TEST_PORT);
         httpClient = Vertx.vertx().createHttpClient();
 
     }
-
+    
     @Test(timeout=2000)
     public void testResourceNotfound(TestContext context) {
-        Async testBasicRequest = context.async();
+        Async async = context.async();
         httpClient.getNow(TEST_PORT, TEST_HOST, "/dummy", response -> {
             context.assertEquals(response.statusCode(), 404);
-            testBasicRequest.complete();
+            async.complete();
         });
 
     }
     
     @Test(timeout=2000)
     public void testMessageIsConsume(TestContext context) {
-        Async testBasicRequest = context.async();
-        eventBus.<JsonObject> consumer("GET_store_inventory").handler(testDummyEvent -> {
-            testDummyEvent.reply(new JsonObject().put("sold", 2L));
-        }).completionHandler(registerHandler -> {
-            if (registerHandler.succeeded()) {
-                httpClient.getNow(TEST_PORT, TEST_HOST, "/store/inventory", response -> {
-                    response.bodyHandler(body -> {
-                        JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
-                        context.assertTrue(jsonBody.containsKey("sold"));
-                        context.assertEquals(2L, jsonBody.getLong("sold"));
-                        testBasicRequest.complete();
-                    });
-                });
-            } else {
-                context.fail(registerHandler.cause());
-                testBasicRequest.complete();
-            }
+        Async async = context.async();
+        httpClient.getNow(TEST_PORT, TEST_HOST, "/store/inventory", response -> {
+            response.bodyHandler(body -> {
+                JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
+                context.assertTrue(jsonBody.containsKey("sold"));
+                context.assertEquals(2L, jsonBody.getLong("sold"));
+                async.complete();
+            });
         });
     }
 
     @Test(timeout=2000)
     public void testMessageIsNotConsume(TestContext context) {
-        Async testBasicRequest = context.async();
-        eventBus.<JsonObject> consumer("test.dummy").handler(testDummyEvent -> {
-            context.fail("should not be called");
-        }).completionHandler(registerHandler -> {
-            if (registerHandler.succeeded()) {
-                HttpClientRequest req = httpClient.get(TEST_PORT, TEST_HOST, "/store/inventory");
-                req.setTimeout(1000);
-                req.exceptionHandler(err -> {
-                    context.assertEquals(err.getClass(), TimeoutException.class);
-                    testBasicRequest.complete();
-                });
-            } else {
-                context.fail(registerHandler.cause());
-            }
+        Async async = context.async();
+        HttpClientRequest req = httpClient.get(TEST_PORT, TEST_HOST, "/store/inventory");
+        req.setTimeout(1000);
+        req.exceptionHandler(err -> {
+            context.assertEquals(err.getClass(), TimeoutException.class);
+            async.complete();
         });
     }
 
     @Test(timeout=2000)
     public void testWithPathParameter(TestContext context) {
-        Async testBasicRequest = context.async();
-        eventBus.<JsonObject> consumer("GET_pet_petId").handler(testDummyEvent -> {
-            String petId = testDummyEvent.body().getString("petId");
-            testDummyEvent.reply(new JsonObject().put("petId_received",petId));
-        }).completionHandler(registerHandler -> {
-            if (registerHandler.succeeded()) {
-                httpClient.getNow(TEST_PORT, TEST_HOST, "/pet/5", response -> {
-                    response.bodyHandler(body -> {
-                        JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
-                        context.assertTrue(jsonBody.containsKey("petId_received"));
-                        context.assertEquals("5", jsonBody.getString("petId_received"));
-                        testBasicRequest.complete();
-                    });
-                });
-            } else {
-                context.fail(registerHandler.cause());
-            }
+        Async async = context.async();
+        httpClient.getNow(TEST_PORT, TEST_HOST, "/pet/5", response -> {
+            response.bodyHandler(body -> {
+                JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
+                context.assertTrue(jsonBody.containsKey("petId_received"));
+                context.assertEquals("5", jsonBody.getString("petId_received"));
+                async.complete();
+            });
         });
     }
     
     @Test(timeout=2000)
     public void testWithQuerySimpleParameter(TestContext context) {
-        Async testBasicRequest = context.async();
-        eventBus.<JsonObject> consumer("GET_user_login").handler(testDummyEvent -> {
-            String username = testDummyEvent.body().getString("username");
-            testDummyEvent.reply(new JsonObject().put("username_received",username));
-        }).completionHandler(registerHandler -> {
-            if (registerHandler.succeeded()) {
-                httpClient.getNow(TEST_PORT, TEST_HOST, "/user/login?username=myUser&password=mySecret", response -> {
-                    response.bodyHandler(body -> {
-                        JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
-                        context.assertTrue(jsonBody.containsKey("username_received"));
-                        context.assertEquals("myUser", jsonBody.getString("username_received"));
-                        testBasicRequest.complete();
-                    });
-                });
-            } else {
-                context.fail(registerHandler.cause());
-            }
+        Async async = context.async();
+        httpClient.getNow(TEST_PORT, TEST_HOST, "/user/login?username=myUser&password=mySecret", response -> {
+            response.bodyHandler(body -> {
+                JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
+                context.assertTrue(jsonBody.containsKey("username_received"));
+                context.assertEquals("myUser", jsonBody.getString("username_received"));
+                async.complete();
+            });
         });
     }
     
     @Test(timeout=2000)
     public void testWithQueryArrayParameter(TestContext context) {
-        Async testBasicRequest = context.async();
-        eventBus.<JsonObject> consumer("GET_pet_findByStatus").handler(testDummyEvent -> {
-            JsonArray status = testDummyEvent.body().getJsonArray("status");
-            JsonObject result = new JsonObject();
-            for(int i=0; i<status.size(); i++) {
-                result.put("element "+i, status.getString(i));
-            }
-            testDummyEvent.reply(result);
-        }).completionHandler(registerHandler -> {
-            if (registerHandler.succeeded()) {
-                httpClient.getNow(TEST_PORT, TEST_HOST, "/pet/findByStatus?status=available", response -> {
-                    response.bodyHandler(body -> {
-                        JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
-                        context.assertTrue(jsonBody.containsKey("element 0"));
-                        context.assertEquals("available", jsonBody.getString("element 0"));
-                        testBasicRequest.complete();
-                    });
-                });
-            } else {
-                context.fail(registerHandler.cause());
-            }
+        Async async = context.async();
+        httpClient.getNow(TEST_PORT, TEST_HOST, "/pet/findByStatus?status=available", response -> {
+            response.bodyHandler(body -> {
+                JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
+                context.assertTrue(jsonBody.containsKey("element 0"));
+                context.assertEquals("available", jsonBody.getString("element 0"));
+                async.complete();
+            });
         });
     }
     
     @Test(timeout=2000)
     public void testWithQueryManyArrayParameter(TestContext context) {
-        Async testBasicRequest = context.async();
-        eventBus.<JsonObject> consumer("GET_pet_findByStatus").handler(testDummyEvent -> {
-            JsonArray status = testDummyEvent.body().getJsonArray("status");
-            JsonObject result = new JsonObject();
-            for(int i=0; i<status.size(); i++) {
-                result.put("element "+i, status.getString(i));
-            }
-            testDummyEvent.reply(result);
-        }).completionHandler(registerHandler -> {
-            if (registerHandler.succeeded()) {
-                httpClient.getNow(TEST_PORT, TEST_HOST, "/pet/findByStatus?status=available&status=pending", response -> {
-                    response.bodyHandler(body -> {
-                        JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
-                        context.assertTrue(jsonBody.containsKey("element 0"));
-                        context.assertEquals("available", jsonBody.getString("element 0"));
-                        context.assertTrue(jsonBody.containsKey("element 1"));
-                        context.assertEquals("pending", jsonBody.getString("element 1"));
-                        testBasicRequest.complete();
-                    });
-                });
-            } else {
-                context.fail(registerHandler.cause());
-            }
+        Async async = context.async();
+        httpClient.getNow(TEST_PORT, TEST_HOST, "/pet/findByStatus?status=available&status=pending", response -> {
+            response.bodyHandler(body -> {
+                JsonObject jsonBody = new JsonObject(body.toString(Charset.forName("utf-8")));
+                context.assertTrue(jsonBody.containsKey("element 0"));
+                context.assertEquals("available", jsonBody.getString("element 0"));
+                context.assertTrue(jsonBody.containsKey("element 1"));
+                context.assertEquals("pending", jsonBody.getString("element 1"));
+                async.complete();
+            });
         });
     }
 }
