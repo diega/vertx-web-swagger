@@ -7,14 +7,14 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.chamfroy.vertx.swagger.extractors.BodyParameterExtractor;
+import com.chamfroy.vertx.swagger.extractors.ParameterExtractor;
+import com.chamfroy.vertx.swagger.extractors.PathParameterExtractor;
+import com.chamfroy.vertx.swagger.extractors.QueryParameterExtractor;
+
 import io.swagger.models.HttpMethod;
 import io.swagger.models.Operation;
 import io.swagger.models.Swagger;
-import io.swagger.models.parameters.BodyParameter;
-import io.swagger.models.parameters.Parameter;
-import io.swagger.models.parameters.PathParameter;
-import io.swagger.models.parameters.QueryParameter;
-import io.vertx.core.MultiMap;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
@@ -22,7 +22,6 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 
 public class SwaggerRouter {
@@ -109,44 +108,4 @@ public class SwaggerRouter {
         Route buildRoute(Router router, String path);
     }
 
-    private interface ParameterExtractor {
-        Object extract(String name, Parameter parameter, RoutingContext context);
-    }
-
-    public static class PathParameterExtractor implements ParameterExtractor {
-        @Override
-        public Object extract(String name, Parameter parameter, RoutingContext context) {
-            PathParameter pathParam = (PathParameter) parameter;
-            MultiMap params = context.request().params();
-            if (!params.contains(name) && pathParam.getRequired()) {
-                throw new IllegalArgumentException("Missing required parameter: " + name);
-            }
-            return params.get(name);
-        }
-    }
-
-    public static class QueryParameterExtractor implements ParameterExtractor {
-        @Override
-        public Object extract(String name, Parameter parameter, RoutingContext context) {
-            QueryParameter queryParam = (QueryParameter) parameter;
-            MultiMap params = context.request().params();
-            if (!params.contains(name) && queryParam.getRequired()) {
-                throw new IllegalArgumentException("Missing required parameter: " + name);
-            }
-            if (queryParam.getType().equals("array"))
-                return params.getAll(name);
-            return params.get(name);
-        }
-    }
-
-    public static class BodyParameterExtractor implements ParameterExtractor {
-        @Override
-        public Object extract(String name, Parameter parameter, RoutingContext context) {
-            BodyParameter bodyParam = (BodyParameter) parameter;
-            if ("".equals(context.getBodyAsString()) && bodyParam.getRequired()) {
-                throw new IllegalArgumentException("Missing required parameter: " + name);
-            }
-            return context.getBodyAsString();
-        }
-    }
 }
