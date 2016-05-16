@@ -1,27 +1,29 @@
 package com.chamfroy.vertx.swagger;
 
-import io.swagger.models.HttpMethod;
-import io.swagger.models.Operation;
-import io.swagger.models.Swagger;
-import io.swagger.models.parameters.Parameter;
-import io.swagger.models.parameters.PathParameter;
-import io.swagger.models.parameters.QueryParameter;
-import io.vertx.core.MultiMap;
-import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.web.Route;
-import io.vertx.ext.web.Router;
-
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import io.swagger.models.HttpMethod;
+import io.swagger.models.Operation;
+import io.swagger.models.Swagger;
+import io.swagger.models.parameters.BodyParameter;
+import io.swagger.models.parameters.Parameter;
+import io.swagger.models.parameters.PathParameter;
+import io.swagger.models.parameters.QueryParameter;
+import io.vertx.core.MultiMap;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.web.Route;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
 
 public class SwaggerRouter {
 
@@ -44,15 +46,18 @@ public class SwaggerRouter {
         {
             put("path", new PathParameterExtractor());
             put("query", new QueryParameterExtractor());
+            put("body", new BodyParameterExtractor());
         }
     };
 
     public static Router swaggerRouter(Router baseRouter, Swagger swagger, EventBus eventBus) {
+        baseRouter.route().handler(BodyHandler.create());
         swagger.getPaths().forEach((path, pathDescription) -> pathDescription.getOperationMap().forEach((method, operation) -> {
             Route route = ROUTE_BUILDERS.get(method).buildRoute(baseRouter, convertParametersToVertx(path));
             String serviceId = computeServiceId(method, path);
             configureRoute(route, serviceId, operation, eventBus);
         }));
+
         return baseRouter;
     }
 
@@ -65,7 +70,7 @@ public class SwaggerRouter {
                 JsonObject message = new JsonObject();
                 operation.getParameters().forEach(parameter -> {
                     String name = parameter.getName();
-                    Object value = PARAMETER_EXTRACTORS.get(parameter.getIn()).extract(name, parameter, context.request());
+                    Object value = PARAMETER_EXTRACTORS.get(parameter.getIn()).extract(name, parameter, context);
                     message.put(name, value);
                 });
                 eventBus.<JsonObject> send(serviceId, message, operationResponse -> {
@@ -76,10 +81,11 @@ public class SwaggerRouter {
                     }
                 });
             } catch (RuntimeException e) {
-                VERTX_LOGGER.error(e.getLocalizedMessage(), e);
+                VERTX_LOGGER.info("sending Bad Request", e);
                 badRequestEnd(context.response());
             }
         });
+
     }
 
     private static String convertParametersToVertx(String path) {
@@ -104,14 +110,14 @@ public class SwaggerRouter {
     }
 
     private interface ParameterExtractor {
-        Object extract(String name, Parameter parameter, HttpServerRequest request);
+        Object extract(String name, Parameter parameter, RoutingContext context);
     }
 
     public static class PathParameterExtractor implements ParameterExtractor {
         @Override
-        public Object extract(String name, Parameter parameter, HttpServerRequest request) {
+        public Object extract(String name, Parameter parameter, RoutingContext context) {
             PathParameter pathParam = (PathParameter) parameter;
-            MultiMap params = request.params();
+            MultiMap params = context.request().params();
             if (!params.contains(name) && pathParam.getRequired()) {
                 throw new IllegalArgumentException("Missing required parameter: " + name);
             }
@@ -121,15 +127,26 @@ public class SwaggerRouter {
 
     public static class QueryParameterExtractor implements ParameterExtractor {
         @Override
-        public Object extract(String name, Parameter parameter, HttpServerRequest request) {
+        public Object extract(String name, Parameter parameter, RoutingContext context) {
             QueryParameter queryParam = (QueryParameter) parameter;
-            MultiMap params = request.params();
+            MultiMap params = context.request().params();
             if (!params.contains(name) && queryParam.getRequired()) {
                 throw new IllegalArgumentException("Missing required parameter: " + name);
             }
             if (queryParam.getType().equals("array"))
                 return params.getAll(name);
             return params.get(name);
+        }
+    }
+
+    public static class BodyParameterExtractor implements ParameterExtractor {
+        @Override
+        public Object extract(String name, Parameter parameter, RoutingContext context) {
+            BodyParameter bodyParam = (BodyParameter) parameter;
+            if ("".equals(context.getBodyAsString()) && bodyParam.getRequired()) {
+                throw new IllegalArgumentException("Missing required parameter: " + name);
+            }
+            return context.getBodyAsString();
         }
     }
 }
