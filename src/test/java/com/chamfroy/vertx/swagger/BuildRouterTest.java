@@ -26,7 +26,7 @@ import io.vertx.ext.web.Router;
 public class BuildRouterTest {
 
     private static final int TEST_PORT = 9292;
-    private static final String TEST_HOST = "localhost";    
+    private static final String TEST_HOST = "localhost";
     private static Vertx vertx;
     private static EventBus eventBus;
     private static HttpClient httpClient;
@@ -36,8 +36,8 @@ public class BuildRouterTest {
         Async before = context.async();
         vertx = Vertx.vertx();
         eventBus = vertx.eventBus();
-        
-        //init Router
+
+        // init Router
         FileSystem vertxFileSystem = vertx.fileSystem();
         vertxFileSystem.readFile("swagger.json", readFile -> {
             if (readFile.succeeded()) {
@@ -55,7 +55,7 @@ public class BuildRouterTest {
             }
         });
 
-        //init consumers
+        // init consumers
         eventBus.<JsonObject> consumer("GET_store_inventory").handler(message -> {
             message.reply(new JsonObject().put("sold", 2L));
         });
@@ -64,29 +64,29 @@ public class BuildRouterTest {
         });
         eventBus.<JsonObject> consumer("GET_pet_petId").handler(message -> {
             String petId = message.body().getString("petId");
-            message.reply(new JsonObject().put("petId_received",petId));
+            message.reply(new JsonObject().put("petId_received", petId));
         });
         eventBus.<JsonObject> consumer("GET_user_login").handler(message -> {
             String username = message.body().getString("username");
-            message.reply(new JsonObject().put("username_received",username));
+            message.reply(new JsonObject().put("username_received", username));
         });
         eventBus.<JsonObject> consumer("GET_pet_findByStatus").handler(message -> {
             JsonArray status = message.body().getJsonArray("status");
             JsonObject result = new JsonObject();
-            for(int i=0; i<status.size(); i++) {
-                result.put("element "+i, status.getString(i));
+            for (int i = 0; i < status.size(); i++) {
+                result.put("element " + i, status.getString(i));
             }
             message.reply(result);
         });
-        
-        //init http Server
+
+        // init http Server
         HttpClientOptions options = new HttpClientOptions();
         options.setDefaultPort(TEST_PORT);
         httpClient = Vertx.vertx().createHttpClient();
 
     }
-    
-    @Test(timeout=2000)
+
+    @Test(timeout = 2000)
     public void testResourceNotfound(TestContext context) {
         Async async = context.async();
         httpClient.getNow(TEST_PORT, TEST_HOST, "/dummy", response -> {
@@ -95,8 +95,8 @@ public class BuildRouterTest {
         });
 
     }
-    
-    @Test(timeout=2000)
+
+    @Test(timeout = 2000)
     public void testMessageIsConsume(TestContext context) {
         Async async = context.async();
         httpClient.getNow(TEST_PORT, TEST_HOST, "/store/inventory", response -> {
@@ -109,7 +109,7 @@ public class BuildRouterTest {
         });
     }
 
-    @Test(timeout=2000)
+    @Test(timeout = 2000)
     public void testMessageIsNotConsume(TestContext context) {
         Async async = context.async();
         HttpClientRequest req = httpClient.get(TEST_PORT, TEST_HOST, "/store/inventory");
@@ -120,7 +120,7 @@ public class BuildRouterTest {
         });
     }
 
-    @Test(timeout=2000)
+    @Test(timeout = 2000)
     public void testWithPathParameter(TestContext context) {
         Async async = context.async();
         httpClient.getNow(TEST_PORT, TEST_HOST, "/pet/5", response -> {
@@ -132,8 +132,8 @@ public class BuildRouterTest {
             });
         });
     }
-    
-    @Test(timeout=2000)
+
+    @Test(timeout = 2000)
     public void testWithQuerySimpleParameter(TestContext context) {
         Async async = context.async();
         httpClient.getNow(TEST_PORT, TEST_HOST, "/user/login?username=myUser&password=mySecret", response -> {
@@ -145,8 +145,8 @@ public class BuildRouterTest {
             });
         });
     }
-    
-    @Test(timeout=2000)
+
+    @Test(timeout = 2000)
     public void testWithQueryArrayParameter(TestContext context) {
         Async async = context.async();
         httpClient.getNow(TEST_PORT, TEST_HOST, "/pet/findByStatus?status=available", response -> {
@@ -158,8 +158,8 @@ public class BuildRouterTest {
             });
         });
     }
-    
-    @Test(timeout=2000)
+
+    @Test(timeout = 2000)
     public void testWithQueryManyArrayParameter(TestContext context) {
         Async async = context.async();
         httpClient.getNow(TEST_PORT, TEST_HOST, "/pet/findByStatus?status=available&status=pending", response -> {
