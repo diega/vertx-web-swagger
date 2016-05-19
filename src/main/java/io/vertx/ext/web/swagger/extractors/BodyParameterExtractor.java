@@ -1,4 +1,4 @@
-package com.chamfroy.vertx.swagger.extractors;
+package io.vertx.ext.web.swagger.extractors;
 
 import io.swagger.models.parameters.BodyParameter;
 import io.swagger.models.parameters.Parameter;

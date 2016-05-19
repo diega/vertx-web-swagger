@@ -1,4 +1,4 @@
-package com.chamfroy.vertx.swagger;
+package io.vertx.ext.web.swagger;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -9,7 +9,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.chamfroy.vertx.swagger.model.User;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 import io.swagger.models.Swagger;
@@ -27,6 +26,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.swagger.SwaggerRouter;
+import io.vertx.ext.web.swagger.model.User;
 
 @RunWith(VertxUnitRunner.class)
 public class BuildRouterTest {

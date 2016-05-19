@@ -1,4 +1,4 @@
-package com.chamfroy.vertx.swagger;
+package io.vertx.ext.web.swagger;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -6,11 +6,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import com.chamfroy.vertx.swagger.extractors.BodyParameterExtractor;
-import com.chamfroy.vertx.swagger.extractors.ParameterExtractor;
-import com.chamfroy.vertx.swagger.extractors.PathParameterExtractor;
-import com.chamfroy.vertx.swagger.extractors.QueryParameterExtractor;
 
 import io.swagger.models.HttpMethod;
 import io.swagger.models.Operation;
@@ -23,6 +18,10 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.swagger.extractors.BodyParameterExtractor;
+import io.vertx.ext.web.swagger.extractors.ParameterExtractor;
+import io.vertx.ext.web.swagger.extractors.PathParameterExtractor;
+import io.vertx.ext.web.swagger.extractors.QueryParameterExtractor;
 
 public class SwaggerRouter {
 

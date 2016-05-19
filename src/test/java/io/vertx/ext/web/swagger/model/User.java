@@ -1,4 +1,4 @@
-package com.chamfroy.vertx.swagger.model;
+package io.vertx.ext.web.swagger.model;
 
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonInclude;
