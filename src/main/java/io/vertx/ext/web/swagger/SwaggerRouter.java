@@ -73,13 +73,16 @@ public class SwaggerRouter {
                 });
                 eventBus.<JsonObject> send(serviceId, message, operationResponse -> {
                     if (operationResponse.succeeded()) {
-                        context.response().end(operationResponse.result().body().encode());
+                        if(operationResponse.result().body() != null)
+                            context.response().end(operationResponse.result().body().encode());
+                        else
+                            context.response().end();
                     } else {
                         internalServerErrorEnd(context.response());
                     }
                 });
             } catch (RuntimeException e) {
-                VERTX_LOGGER.info("sending Bad Request", e);
+                VERTX_LOGGER.debug("sending Bad Request", e);
                 badRequestEnd(context.response());
             }
         });

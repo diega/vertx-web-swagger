@@ -98,6 +98,9 @@ public class BuildRouterTest {
                 message.fail(500, e.getLocalizedMessage());
             } 
         });
+        eventBus.<JsonObject> consumer("GET_user_logout").handler(message -> {
+            message.reply(null);
+        });
 
         // init http Server
         HttpClientOptions options = new HttpClientOptions();
@@ -222,5 +225,14 @@ public class BuildRouterTest {
                 async.complete();
             })
         ).end(users.encode());
+    }
+    
+    @Test(timeout = 2000)
+    public void testNullBodyResponse(TestContext context) {
+        Async async = context.async();
+        httpClient.getNow(TEST_PORT, TEST_HOST, "/user/logout", response -> {
+            context.assertEquals(response.statusCode(), 200);
+            async.complete();
+        });
     }
 }
