@@ -10,7 +10,7 @@ public class FormParameterExtractor implements ParameterExtractor {
     @Override
     public Object extract(String name, Parameter parameter, RoutingContext context) {
         FormParameter formParam = (FormParameter) parameter;
-        MultiMap params = context.request().params();
+        MultiMap params = context.request().formAttributes();
         if (!params.contains(name) && formParam.getRequired()) {
             throw new IllegalArgumentException("Missing required parameter: " + name);
         }

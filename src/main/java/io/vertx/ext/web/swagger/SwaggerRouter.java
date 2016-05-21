@@ -46,6 +46,7 @@ public class SwaggerRouter {
         {
             put("path", new PathParameterExtractor());
             put("query", new QueryParameterExtractor());
+            put("header", new HeaderParameterExtractor());
             put("formData", new FormParameterExtractor());
             put("body", new BodyParameterExtractor());  
         }

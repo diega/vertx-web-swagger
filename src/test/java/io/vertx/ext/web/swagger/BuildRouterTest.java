@@ -87,6 +87,14 @@ public class BuildRouterTest {
                     .put("status_received", status)
                     );
         });
+        eventBus.<JsonObject> consumer("DELETE_pet_petId").handler(message -> {
+            String petId = message.body().getString("petId");
+            String apiKey = message.body().getString("api_key");
+            message.reply(new JsonObject()
+                    .put("petId_received", petId)
+                    .put("header_received", apiKey)
+                    );
+        });
         eventBus.<JsonObject> consumer("POST_pet_petId_uploadImage").handler(message -> {
             JsonObject result = new JsonObject();
             String petId = message.body().getString("petId");
@@ -333,5 +341,21 @@ public class BuildRouterTest {
         req.end(payload.toString());
         
     }
-    
+
+    @Test(timeout = 2000)
+    public void testWithHeaderParameter(TestContext context) {
+        Async async = context.async();
+        HttpClientRequest req = httpClient.delete(TEST_PORT, TEST_HOST, "/pet/1");
+        req.putHeader("api_key", "MyAPIKey");
+        req.handler(response -> response.bodyHandler(result -> {
+            JsonObject jsonBody = new JsonObject(result.toString(Charset.forName("utf-8")));
+            context.assertTrue(jsonBody.containsKey("petId_received"));
+            context.assertEquals("1", jsonBody.getString("petId_received"));
+            context.assertTrue(jsonBody.containsKey("header_received"));
+            context.assertEquals("MyAPIKey", jsonBody.getString("header_received"));
+            async.complete();
+        }));
+        req.end();
+        
+    }
 }
