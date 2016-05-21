@@ -15,8 +15,7 @@ It's using [Swagger-Parser](https://github.com/swagger-api/swagger-parser#usage)
     Router swaggerRouter = SwaggerRouter.swaggerRouter(Router.router(vertx), swagger, vertx.eventBus());
 ```
 
-For now, paths parameters, query parameters and body parameter are supported and can be parsed.
-Others kinds of parameter (e.g. Cookie, Form) will be supported next.
+Paths, query, header, form and body parameters are supported and can be parsed.
 
 ### Example:
 With this Json
