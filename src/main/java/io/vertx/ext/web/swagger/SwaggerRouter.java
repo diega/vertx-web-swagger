@@ -19,6 +19,8 @@ import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.swagger.extractors.BodyParameterExtractor;
+import io.vertx.ext.web.swagger.extractors.FormParameterExtractor;
+import io.vertx.ext.web.swagger.extractors.HeaderParameterExtractor;
 import io.vertx.ext.web.swagger.extractors.ParameterExtractor;
 import io.vertx.ext.web.swagger.extractors.PathParameterExtractor;
 import io.vertx.ext.web.swagger.extractors.QueryParameterExtractor;
@@ -44,7 +46,8 @@ public class SwaggerRouter {
         {
             put("path", new PathParameterExtractor());
             put("query", new QueryParameterExtractor());
-            put("body", new BodyParameterExtractor());
+            put("formData", new FormParameterExtractor());
+            put("body", new BodyParameterExtractor());  
         }
     };
 
@@ -85,6 +88,7 @@ public class SwaggerRouter {
                 VERTX_LOGGER.debug("sending Bad Request", e);
                 badRequestEnd(context.response());
             }
+            
         });
 
     }
