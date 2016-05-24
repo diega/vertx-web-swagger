@@ -100,7 +100,7 @@ public class SwaggerRouter {
     }
 
     private static String computeServiceId(HttpMethod httpMethod, String pathname) {
-        return httpMethod.name() + pathname.replaceAll("_", "-").replaceAll("/", "_").replaceAll("[{}]", "");
+        return httpMethod.name() + pathname.replaceAll("-", "_").replaceAll("/", "_").replaceAll("[{}]", "");
     }
 
     private static void internalServerErrorEnd(HttpServerResponse response) {
